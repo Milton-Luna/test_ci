@@ -43,7 +43,6 @@ export class Business {
   @Column('simple-array', { nullable: true })
   images: string[];
 
-
   @Column({ nullable: true })
   banner_image: string;
 
@@ -84,7 +83,6 @@ export class Business {
   @Column({ nullable: true })
   legal_document_url: string;
 
- 
   @Column({ default: false })
   is_legally_verified: boolean;
 

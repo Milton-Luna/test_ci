@@ -19,7 +19,6 @@ import { FollowModule } from './follow/follow.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({

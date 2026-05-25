@@ -7,14 +7,15 @@ import { Genero } from '../../shared/entities/genero.entity';
 import { CreateGeneroDto } from '../dto/create-genero.dto';
 import { UpdateGeneroDto } from '../dto/Update-genero.dto';
 import { PaginationDto } from 'src/shared/pagination/dto/pagination.dto';
-import { createPaginationResponse, PaginationResult } from 'src/shared/pagination/pagination.helper';
+import {
+  createPaginationResponse,
+  PaginationResult,
+} from 'src/shared/pagination/pagination.helper';
 import { GeneroRepository } from 'src/shared/repositories/genero.repository';
 
 @Injectable()
 export class GeneroService {
-  constructor(
-    private readonly generoRepository: GeneroRepository,
-  ) {}
+  constructor(private readonly generoRepository: GeneroRepository) {}
 
   async create(createGeneroDto: CreateGeneroDto): Promise<Genero> {
     try {
@@ -33,12 +34,13 @@ export class GeneroService {
     }
   }
 
-  async findAll(paginationDto: PaginationDto): Promise<PaginationResult<Genero>> {
+  async findAll(
+    paginationDto: PaginationDto,
+  ): Promise<PaginationResult<Genero>> {
     const { limit = 10, page = 1 } = paginationDto;
     const skip = (page - 1) * limit;
 
     try {
-      
       const [generos, total] = await this.generoRepository.findAndCount({
         take: limit,
         skip: skip,
@@ -46,13 +48,12 @@ export class GeneroService {
           id_genero: true,
           nombre: true,
         },
-      })
+      });
       if (generos.length === 0) {
         throw new NotFoundException('No se encontraron géneros.');
       }
 
       return createPaginationResponse(generos, total, page, limit);
-
     } catch (error) {
       throw new BadRequestException(
         `Error al buscar los géneros: ${(error as Error).message}`,
