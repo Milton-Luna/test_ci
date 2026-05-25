@@ -14,9 +14,7 @@ import { createPaginationResponse } from 'src/shared/pagination/pagination.helpe
 
 @Injectable()
 export class CategoryService {
-  constructor(
-    private readonly categoryRepository: CategoryRepository,
-  ) {}
+  constructor(private readonly categoryRepository: CategoryRepository) {}
 
   async create(createCategoryDto: CreateCategoryDto): Promise<any> {
     try {

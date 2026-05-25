@@ -6,7 +6,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/shared/entities/user.entity';
 
-
 interface JwtPayload {
   sub: number;
   email: string;

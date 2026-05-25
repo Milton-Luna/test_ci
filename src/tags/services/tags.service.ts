@@ -13,9 +13,7 @@ import { createPaginationResponse } from 'src/shared/pagination/pagination.helpe
 
 @Injectable()
 export class TagsService {
-  constructor(
-    private readonly tagRepository: TagsRepository,
-  ) {}
+  constructor(private readonly tagRepository: TagsRepository) {}
 
   async create(createTagDto: CreateTagDto): Promise<any> {
     try {
