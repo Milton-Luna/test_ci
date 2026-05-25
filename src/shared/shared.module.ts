@@ -31,6 +31,13 @@ import { FollowRepository } from './repositories/follow.repository';
 import { Follow } from './entities/follow.entity';
 import { Review } from './entities/review.entity';
 import { ReviewRepository } from './repositories/review.repository';
+import { AiService } from './ai/ai.service';
+import { ReviewBlockRepository } from './repositories/review-block.repository';
+import { ReviewReportRepository } from './repositories/review-report.repository';
+import { ReviewBlock } from './entities/review-block.entity';
+import { ReviewReport } from './entities/review-report.entity';
+import { Notification } from './entities/notification.entity';
+import { NotificationRepository } from './repositories/notification.repository';
 
 @Module({})
 export class SharedModule {
@@ -88,6 +95,9 @@ export class SharedModule {
           Certification,
           Follow,
           Review,
+          ReviewBlock,
+          ReviewReport,
+          Notification,
         ]),
         MailModule,
         PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -114,6 +124,10 @@ export class SharedModule {
         CertificationRepository,
         FollowRepository,
         ReviewRepository,
+        AiService,
+        ReviewBlockRepository,
+        ReviewReportRepository,
+        NotificationRepository,
       ],
       exports: [
         TypeOrmModule,
@@ -131,6 +145,10 @@ export class SharedModule {
         CertificationRepository,
         FollowRepository,
         ReviewRepository,
+        AiService,
+        ReviewBlockRepository,
+        ReviewReportRepository,
+        NotificationRepository,
       ],
     };
   }

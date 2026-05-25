@@ -8,6 +8,8 @@ import { Tag } from '../../shared/entities/tags.entity';
 import { CreateTagDto } from '../dto/create-tags';
 import { UpdateTagDto } from '../dto/update-tags';
 import { TagsRepository } from 'src/shared/repositories/tags.repository';
+import { PaginationDto } from 'src/shared/pagination/dto/pagination.dto';
+import { createPaginationResponse } from 'src/shared/pagination/pagination.helper';
 
 @Injectable()
 export class TagsService {
@@ -44,7 +46,24 @@ export class TagsService {
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(
-        `Error al crear el tag: ${error.message}`,
+        `Error al crear el tag: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  async findAllAdmin(paginationDto: PaginationDto = {}) {
+    const { page = 1, limit = 15 } = paginationDto;
+    const skip = (page - 1) * limit;
+    try {
+      const [tags, total] = await this.tagRepository.findAndCount({
+        order: { tag: 'ASC' },
+        skip,
+        take: limit,
+      });
+      return createPaginationResponse(tags, total, page, limit);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error al obtener los tags: ${(error as Error).message}`,
       );
     }
   }
@@ -65,7 +84,7 @@ export class TagsService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
-        `Error al obtener los tags: ${error.message}`,
+        `Error al obtener los tags: ${(error as Error).message}`,
       );
     }
   }
@@ -92,7 +111,7 @@ export class TagsService {
       )
         throw error;
       throw new InternalServerErrorException(
-        `Error al buscar el tag: ${error.message}`,
+        `Error al buscar el tag: ${(error as Error).message}`,
       );
     }
   }
@@ -139,7 +158,7 @@ export class TagsService {
       )
         throw error;
       throw new InternalServerErrorException(
-        `Error al actualizar el tag: ${error.message}`,
+        `Error al actualizar el tag: ${(error as Error).message}`,
       );
     }
   }
@@ -158,7 +177,7 @@ export class TagsService {
       )
         throw error;
       throw new InternalServerErrorException(
-        `Error al eliminar el tag: ${error.message}`,
+        `Error al eliminar el tag: ${(error as Error).message}`,
       );
     }
   }

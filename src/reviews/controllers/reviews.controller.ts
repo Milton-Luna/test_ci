@@ -18,6 +18,8 @@ import { CurrentUser } from 'src/auth/decorator/user.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { UpdateReviewDto } from '../dto/update-review.dto';
 import { GetBusinessReviewsFilterDto } from '../dto/get-business-reviews-filter.dto';
+import { RolesGuard } from 'src/auth/jwt-auth/roles.guard';
+import { Roles } from 'src/auth/decorator/roles.decorator';
 
 @ApiTags('reviews')
 @Controller('reviews')
@@ -47,6 +49,29 @@ export class ReviewsController {
     @Query() paginationDto: PaginationDto,
   ) {
     return this.reviewsService.getMyReviews(user, paginationDto);
+  }
+
+  @Get('suspicious')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN') 
+  @ApiOperation({ summary: 'Ver reseñas sospechosas' })
+  getSuspiciousReviews(
+    @CurrentUser() user: any,
+    @Query() paginationDto: PaginationDto,
+  ) {
+    return this.reviewsService.getSuspiciousReviews(paginationDto);
+  }
+  
+  @Get('my-review/business/:businessId')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Obtener mi reseña para un negocio específico' })
+  getMyReviewForBusiness(
+    @Param('businessId', ParseIntPipe) businessId: number,
+    @CurrentUser() user: any,
+  ) {
+    return this.reviewsService.getMyReviewForBusiness(businessId, user);
   }
 
   @Get('business/:businessId')

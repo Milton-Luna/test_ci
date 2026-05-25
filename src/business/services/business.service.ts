@@ -1,25 +1,29 @@
+
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
-import { In, MoreThanOrEqual} from 'typeorm';
-import { Business, BusinessStatus } from '../../shared/entities/business.entity';
-import { CreateBusinessDto } from '../dto/create-business.dto';
-import { UpdateBusinessDto } from '../dto/update-business.dto';
-import { User } from 'src/shared/entities/user.entity';
-import { Tag } from '../../shared/entities/tags.entity';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MailService } from 'src/mail/mail.service';
-import { FindOptionsWhere, ILike } from 'typeorm';
-import { GetBusinessesFilterDto } from '../dto/get-businesses-filter.dto';
-import { createPaginationResponse } from '../../shared/pagination/pagination.helper';
-import { PaginationDto } from '../../shared/pagination/dto/pagination.dto';
+import { User } from 'src/shared/entities/user.entity';
 import { BusinessRepository } from 'src/shared/repositories/business.repository';
 import { CategoryRepository } from 'src/shared/repositories/category.repository';
+import { RolRepository } from 'src/shared/repositories/rol.repository';
 import { TagsRepository } from 'src/shared/repositories/tags.repository';
-import { PublicBusinessFilterDto } from '../dto/public-business-filter.dto';
+import { UserRepository } from 'src/shared/repositories/user.repository';
+import { FindOptionsWhere, ILike, In, MoreThanOrEqual, Not } from 'typeorm';
+import { User } from 'src/shared/entities/user.entity';
+import { Business, BusinessStatus } from '../../shared/entities/business.entity';
+import { Tag } from '../../shared/entities/tags.entity';
+import { createPaginationResponse } from '../../shared/pagination/pagination.helper';
+import { CreateBusinessDto } from '../dto/create-business.dto';
+import { GetBusinessesFilterDto } from '../dto/get-businesses-filter.dto';
+import { BusinessSortOption, PublicBusinessFilterDto } from '../dto/public-business-filter.dto';
+import { UpdateBusinessDto } from '../dto/update-business.dto';
 
 
 @Injectable()
@@ -29,12 +33,33 @@ export class BusinessService {
     private readonly categoryRepository: CategoryRepository,
     private readonly tagRepository: TagsRepository,
     private readonly mailService: MailService,
+    private readonly userRepository: UserRepository,
+    private readonly roleRepository: RolRepository,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  private sanitizePublicBusiness(business: Business) {
+    const { legal_document_url, is_legally_verified, user, ...rest } = business;
+    return { ...rest, owner_id: user?.id_usuario ?? null };
+  }
 
   //Metodos publicos
   async findAllPublic(filterDto: PublicBusinessFilterDto) {
-    const { page = 1, limit = 10, id_category, id_tag, search } = filterDto;
+    const { page = 1, limit = 50, id_category, id_tag, search, sortBy, sortDirection = 'DESC' } = filterDto;
     const skip = (page - 1) * limit;
+
+    if (!sortBy || sortBy === BusinessSortOption.RELEVANT) {
+      const [businesses, total] = await this.businessRepository
+        .findPublicWithRelevanceScore({ skip, take: limit, id_category, id_tag, search });
+
+      if (total === 0)
+        throw new NotFoundException('No hay negocios disponibles en este momento.');
+
+      return createPaginationResponse(
+        businesses.map(b => this.sanitizePublicBusiness(b)),
+        total, page, limit,
+      );
+    }
 
     const whereConditions: FindOptionsWhere<Business> = {
       status: BusinessStatus.ACTIVE,
@@ -52,10 +77,20 @@ export class BusinessService {
       whereConditions.tags = { id_tags: id_tag };
     }
 
+
+    let orderClause: any = { createdAt: sortDirection };
+
+    if (sortBy === BusinessSortOption.RATED) {
+      orderClause = { average_rating: sortDirection, total_reviews: sortDirection };
+    } else if (sortBy === BusinessSortOption.REVIEWS) {
+      orderClause = { total_reviews: sortDirection, average_rating: sortDirection };
+    } else if (sortBy === BusinessSortOption.RECENT) {
+      orderClause = { createdAt: sortDirection };
+    }
     const [businesses, total] = await this.businessRepository.findAndCount({
       where: whereConditions,
       relations: ['category', 'tags', 'certifications'],
-      order: { createdAt: 'DESC' },
+      order: orderClause,
       skip: skip,
       take: limit,
     });
@@ -64,7 +99,8 @@ export class BusinessService {
       throw new NotFoundException('No hay negocios disponibles en este momento.');
     }
 
-    return createPaginationResponse(businesses, total, page, limit);
+    const sanitizedBusinesses = businesses.map(b => this.sanitizePublicBusiness(b));
+    return createPaginationResponse(sanitizedBusinesses, total, page, limit);
   }
 
   async findOnePublic(id: number) {
@@ -74,7 +110,7 @@ export class BusinessService {
         status: BusinessStatus.ACTIVE,
         isActive: true,
       },
-      relations: ['category', 'tags', 'certifications'],
+      relations: ['category', 'tags', 'certifications', 'user'],
     });
 
     if (!business) {
@@ -83,7 +119,7 @@ export class BusinessService {
       );
     }
 
-    return business;
+    return this.sanitizePublicBusiness(business);
   }
 
   async getTopBusinesses() {
@@ -105,12 +141,12 @@ export class BusinessService {
       throw new NotFoundException('Aún no hay negocios calificados para mostrar.');
     }
 
-    return businesses;
+    return businesses.map(b => this.sanitizePublicBusiness(b));
   }
 
   //Metodos gestion interna
 
-  async findForManagement(user: any) {
+  async findForManagement(user: User) {
     const roleName = user.rol.nombre;
 
     if (roleName === 'admin') {
@@ -128,7 +164,7 @@ export class BusinessService {
 
   async findAllForAdmin(filters: GetBusinessesFilterDto) {
     
-    const { status, isActive, id_category, id_tag, search, page = 1, limit = 10 } = filters;
+    const { status, isActive, id_category, id_tag, search, sortBy, sortDirection = 'DESC', page = 1, limit = 10 } = filters;
     const skip = (page - 1) * limit;
     const whereCondition: FindOptionsWhere<Business> = {};
 
@@ -152,10 +188,20 @@ export class BusinessService {
       whereCondition.tags = { id_tags: id_tag };
     }
 
+    let orderClause: any = { createdAt: sortDirection };
+
+    if (sortBy === BusinessSortOption.RATED) {
+      orderClause = { average_rating: sortDirection, total_reviews: sortDirection };
+    } else if (sortBy === BusinessSortOption.REVIEWS) {
+      orderClause = { total_reviews: sortDirection, average_rating: sortDirection };
+    } else if (sortBy === BusinessSortOption.RECENT) {
+      orderClause = { createdAt: sortDirection };
+    }
+
     const [businesses, total] = await this.businessRepository.findAndCount({
       where: whereCondition,
       relations: ['user', 'category', 'tags', 'certifications'],
-      order: { createdAt: 'DESC' },
+      order: orderClause,
       skip,
       take: limit,
     });
@@ -189,6 +235,13 @@ export class BusinessService {
           'Solo puedes tener un negocio a la vez. Si tu negocio fue desactivado, no puedes crear uno nuevo.',
         );
       }
+      
+      const nameExists = await this.businessRepository.findOne({
+        where: { businessName: ILike(createBusinessDto.businessName) }
+      });
+      if (nameExists) {
+        throw new ConflictException(`El nombre '${createBusinessDto.businessName}' ya está registrado por otro negocio.`);
+      }
 
       const { categoryId, tagIds, ...businessData } = createBusinessDto;
 
@@ -204,7 +257,7 @@ export class BusinessService {
 
       const newBusiness = this.businessRepository.create({
         ...businessData,
-        user,
+        user: user,
         category,
         tags,
         status: BusinessStatus.PENDING,
@@ -212,18 +265,32 @@ export class BusinessService {
     );
       
       const savedBusiness = await this.businessRepository.save(newBusiness);
+      if (user.rol.nombre === 'USER') {
+        const ownerRole = await this.roleRepository.findOne({ where: { nombre: 'owner' } });
+        
+        if (ownerRole) {
+           await this.userRepository.update(user.id_usuario, { rol: ownerRole });
+        }
+      }
       await this.mailService.sendBusinessWelcome(user.email, savedBusiness.businessName);
+
+      this.eventEmitter.emit('business.created', {
+        ownerId:      user.id_usuario,
+        businessId:   savedBusiness.id_business,
+        businessName: savedBusiness.businessName,
+      });
+
       return { message: 'Negocio ' + savedBusiness.businessName + ' creado exitosamente y pendiente de revisión por un administrador' };
 
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof ConflictException) throw error;
       throw new InternalServerErrorException(
-        `Error al crear negocio: ${error.message}`,
+        `Error al crear negocio: ${(error as Error).message}`,
       );
     }
   }
 
-  async update(id: number, updateBusinessDto: UpdateBusinessDto, user: any) {
+  async update(id: number, updateBusinessDto: UpdateBusinessDto, user: User) {
     const roleName = user.rol.nombre;
 
     const business = await this.businessRepository.findOne({
@@ -245,6 +312,20 @@ export class BusinessService {
       );
     }
 
+    const { categoryId, tagIds, ...businessData } = updateBusinessDto as any;
+
+    if (businessData.businessName) {
+      const nameExists = await this.businessRepository.findOne({
+        where: { 
+          businessName: ILike(businessData.businessName),
+          id_business: Not(id)
+        }
+      });
+      if (nameExists) {
+        throw new ConflictException(`El nombre '${businessData.businessName}' ya está registrado por otro negocio.`);
+      }
+    }
+
     let wasResubmitted = false;
 
     if (roleName !== 'admin' && business.status === BusinessStatus.REJECTED) {
@@ -252,7 +333,6 @@ export class BusinessService {
       business.rejectionReason = null; 
       wasResubmitted = true;
     }
-    const { categoryId, tagIds, ...businessData } = updateBusinessDto as any;
 
     if (categoryId) {
       const category = await this.categoryRepository.findOneBy({
@@ -275,14 +355,22 @@ export class BusinessService {
       await this.mailService.sendBusinessResubmitted(business.user.email, business.businessName);
     }
 
-    return { 
-      message: 'Negocio ' + business.businessName + ' actualizado exitosamente' + 
-      (wasResubmitted ? ' y enviado nuevamente a revisión.' : '') 
+    if (wasResubmitted && business.user?.id_usuario) {
+      this.eventEmitter.emit('business.resubmitted', {
+        ownerId:      business.user.id_usuario,
+        businessId:   business.id_business,
+        businessName: business.businessName,
+      });
+    }
+
+    return {
+      message: 'Negocio ' + business.businessName + ' actualizado exitosamente' +
+      (wasResubmitted ? ' y enviado nuevamente a revisión.' : ''),
     };
 
   }
 
-  async remove(id: number, user: any) {
+  async remove(id: number, user: User) {
     const roleName = user.rol.nombre;
 
     const business = await this.businessRepository.findOne({
@@ -330,12 +418,31 @@ export class BusinessService {
 
     if (business.user?.email) {
       await this.mailService.sendBusinessStatusChange(
-        business.user.email, 
+        business.user.email,
         business.businessName,
         status,
         business.rejectionReason || undefined,
       );
     }
+
+    const ownerId = business.user?.id_usuario;
+    if (ownerId) {
+      if (status === BusinessStatus.ACTIVE) {
+        this.eventEmitter.emit('business.approved', {
+          ownerId,
+          businessId:   updatedBusiness.id_business,
+          businessName: updatedBusiness.businessName,
+        });
+      } else if (status === BusinessStatus.REJECTED) {
+        this.eventEmitter.emit('business.rejected', {
+          ownerId,
+          businessId:      updatedBusiness.id_business,
+          businessName:    updatedBusiness.businessName,
+          rejectionReason: updatedBusiness.rejectionReason,
+        });
+      }
+    }
+
     return {
       message: `El estado del negocio ${updatedBusiness.businessName} ha sido cambiado a ${status}`
     };

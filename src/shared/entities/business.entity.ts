@@ -8,6 +8,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Category } from './category.entity';
@@ -16,6 +17,8 @@ import { Product } from './product.entity';
 import { Certification } from './certifications.entity';
 import { Follow } from './follow.entity';
 import { Review } from './review.entity';
+import { ReviewBlock } from './review-block.entity';
+import { Notification } from './notification.entity';
 
 export enum BusinessStatus {
   ACTIVE = 'Active',
@@ -40,14 +43,18 @@ export class Business {
   @Column('simple-array', { nullable: true })
   images: string[];
 
+
+  @Column({ nullable: true })
+  banner_image: string;
+
   // --- CONTACTO Y UBICACIÓN ---
   @Column()
   address: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
   latitude: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
   longitude: number;
 
   @Column({ nullable: true })
@@ -72,6 +79,14 @@ export class Business {
   // --- HORARIOS ---
   @Column('json', { nullable: true })
   schedule: Record<string, string>;
+
+  // --- VERIFICACIÓN LEGAL ---
+  @Column({ nullable: true })
+  legal_document_url: string;
+
+ 
+  @Column({ default: false })
+  is_legally_verified: boolean;
 
   // --- ESTADOS Y CONTROL ---
   @Column({
@@ -109,12 +124,14 @@ export class Business {
   ai_summary_updated_at: Date | null;
 
   @ManyToOne(() => User, (user) => user.business)
+  @JoinColumn({ name: 'id_usuario' })
   user: User;
 
   @OneToMany(() => Follow, (follow) => follow.followedBusiness)
   followers: Follow[];
 
   @ManyToOne(() => Category, (category) => category.businesses)
+  @JoinColumn({ name: 'id_category' })
   category: Category;
 
   @ManyToMany(() => Tag, (tag) => tag.business)
@@ -129,4 +146,10 @@ export class Business {
 
   @OneToMany(() => Review, (review) => review.business)
   reviews: Review[];
+
+  @OneToMany(() => ReviewBlock, (reviewBlock) => reviewBlock.business)
+  reviewBlocks: ReviewBlock[];
+
+  @OneToMany(() => Notification, (notification) => notification.business)
+  notifications: Notification[];
 }

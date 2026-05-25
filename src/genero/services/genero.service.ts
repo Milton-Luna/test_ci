@@ -28,7 +28,7 @@ export class GeneroService {
       return genero;
     } catch (error) {
       throw new BadRequestException(
-        `Error al crear el género: ${error.message}`,
+        `Error al crear el género: ${(error as Error).message}`,
       );
     }
   }
@@ -55,7 +55,7 @@ export class GeneroService {
 
     } catch (error) {
       throw new BadRequestException(
-        `Error al buscar los géneros: ${error.message}`,
+        `Error al buscar los géneros: ${(error as Error).message}`,
       );
     }
   }
@@ -75,7 +75,7 @@ export class GeneroService {
       return genero;
     } catch (error) {
       throw new BadRequestException(
-        `Error al buscar el género: ${error.message}`,
+        `Error al buscar el género: ${(error as Error).message}`,
       );
     }
   }
@@ -97,7 +97,7 @@ export class GeneroService {
       return await this.generoRepository.save(genero);
     } catch (error) {
       throw new BadRequestException(
-        `Error al actualizar el género: ${error.message}`,
+        `Error al actualizar el género: ${(error as Error).message}`,
       );
     }
   }
@@ -109,7 +109,7 @@ export class GeneroService {
       return { message: 'Género eliminado correctamente' };
     } catch (error) {
       throw new BadRequestException(
-        `Error al eliminar el género: ${error.message}`,
+        `Error al eliminar el género: ${(error as Error).message}`,
       );
     }
   }

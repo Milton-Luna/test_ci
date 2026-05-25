@@ -38,14 +38,29 @@ export class CreateBusinessDto {
   logo?: string;
 
   @ApiPropertyOptional({
+    description: 'URL del documento legal (PDF)',
+    example: 'https://res.cloudinary.com/tu-app/image/upload/v1/legal_document.pdf',
+  })
+  @IsUrl({}, { each: true })
+  legal_document_url: string ;
+
+  @ApiPropertyOptional({
     description: 'Arreglo de URLs con imágenes del local o productos',
     example: ['https://img1.jpg', 'https://img2.jpg'],
     type: [String],
   })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true }) // Valida que cada elemento del arreglo sea un string
+  @IsString({ each: true }) 
   images?: string[];
+
+  @ApiPropertyOptional({
+    description: 'URL de una imagen de banner para la página del negocio',
+    example: 'https://res.cloudinary.com/tu-app/image/upload/v1/banner.png',
+  })
+  @IsOptional()
+  @IsUrl({}, { each: true })
+  banner_image?: string;
 
   @ApiProperty({
     description: 'Dirección física del negocio',
