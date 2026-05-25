@@ -9,6 +9,8 @@ import { Category } from '../../shared/entities/category.entity';
 import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { CategoryRepository } from 'src/shared/repositories/category.repository';
+import { PaginationDto } from 'src/shared/pagination/dto/pagination.dto';
+import { createPaginationResponse } from 'src/shared/pagination/pagination.helper';
 
 @Injectable()
 export class CategoryService {
@@ -50,7 +52,24 @@ export class CategoryService {
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(
-        `Error al crear la categoría: ${error.message}`,
+        `Error al crear la categoría: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  async findAllAdmin(paginationDto: PaginationDto = {}) {
+    const { page = 1, limit = 15 } = paginationDto;
+    const skip = (page - 1) * limit;
+    try {
+      const [categories, total] = await this.categoryRepository.findAndCount({
+        order: { category: 'ASC' },
+        skip,
+        take: limit,
+      });
+      return createPaginationResponse(categories, total, page, limit);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error al obtener las categorías: ${(error as Error).message}`,
       );
     }
   }
@@ -72,7 +91,7 @@ export class CategoryService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
-        `Error al obtener las categorías: ${error.message}`,
+        `Error al obtener las categorías: ${(error as Error).message}`,
       );
     }
   }
@@ -103,7 +122,7 @@ export class CategoryService {
       )
         throw error;
       throw new InternalServerErrorException(
-        `Error al buscar la categoría: ${error.message}`,
+        `Error al buscar la categoría: ${(error as Error).message}`,
       );
     }
   }
@@ -158,7 +177,7 @@ export class CategoryService {
       )
         throw error;
       throw new InternalServerErrorException(
-        `Error al actualizar la categoría: ${error.message}`,
+        `Error al actualizar la categoría: ${(error as Error).message}`,
       );
     }
   }
@@ -180,7 +199,7 @@ export class CategoryService {
       )
         throw error;
       throw new InternalServerErrorException(
-        `Error al eliminar la categoría: ${error.message}`,
+        `Error al eliminar la categoría: ${(error as Error).message}`,
       );
     }
   }

@@ -7,6 +7,12 @@ import { Repository } from 'typeorm';
 import { User } from 'src/shared/entities/user.entity';
 
 
+interface JwtPayload {
+  sub: number;
+  email: string;
+  rol: string;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -23,7 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: JwtPayload) {
     //depuración: mostrar el payload recibido
     //console.log('Payload del JWT recibido en backend:', payload);
     const user = await this.usuarioRepo.findOne({

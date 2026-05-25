@@ -29,7 +29,7 @@ import { PublicBusinessFilterDto } from '../dto/public-business-filter.dto';
 export class BusinessController {
   constructor(private readonly businessService: BusinessService) {}
 
-  //ruta publicas
+  
   @Get()
   @ApiOperation({ summary: 'Listar todos los negocios (Público)' })
   @ApiResponse({ status: 200, description: 'Lista de negocios disponibles' })
@@ -48,25 +48,13 @@ export class BusinessController {
   @Get('admin/list')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Listar negocios con filtros (Solo Admin)' })
-  @ApiResponse({ status: 200, description: 'Lista de negocios según filtros' })
-  @ApiResponse({ status: 403, description: 'Prohibido. Requiere rol de admin.' })
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Obtener lista de negocios con filtros (Solo Admin)' })
+  @ApiResponse({ status: 200, description: 'Lista de negocios según filtros' })
+  @ApiResponse({ status: 403, description: 'Prohibido. Requiere rol de admin.' })
   findAllForAdmin(@Query() filters: GetBusinessesFilterDto) {
     return this.businessService.findAllForAdmin(filters);
   }
-
-  //ruta publicas
-  @Get(':id')
-  @ApiOperation({ summary: 'Ver detalles de un negocio (Público)' })
-  @ApiResponse({ status: 200, description: 'Detalles del negocio' })
-  @ApiResponse({ status: 404, description: 'Negocio no encontrado' })
-  findOnePublic(@Param('id', ParseIntPipe) id: number) {
-    return this.businessService.findOnePublic(id);
-  }
-
-  //Rutas protegidas
 
   @Get('management/my-businesses')
   @ApiBearerAuth()
@@ -80,16 +68,22 @@ export class BusinessController {
     return this.businessService.findForManagement(user);
   }
 
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Ver detalles de un negocio (Público)' })
+  @ApiResponse({ status: 200, description: 'Detalles del negocio' })
+  @ApiResponse({ status: 404, description: 'Negocio no encontrado' })
+  findOnePublic(@Param('id', ParseIntPipe) id: number) {
+    return this.businessService.findOnePublic(id);
+  }
+
+
   @Post()
   @ApiBearerAuth()
   @ApiResponse({ status: 201, description: 'Negocio creado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos para crear negocio' })
-  @ApiResponse({
-    status: 403,
-    description: 'Prohibido. Requiere rol de owner o admin.',
-  })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('owner', 'ADMIN')
+  @Roles('USER','owner', 'ADMIN')
   @ApiOperation({ summary: 'Crear un negocio (Owner/Admin)' })
   create(
     @Body() createBusinessDto: CreateBusinessDto,
@@ -127,7 +121,6 @@ export class BusinessController {
     return this.businessService.remove(id, user);
   }
 
-  // --- ENDPOINTS DE ADMINISTRADOR ---
 
   @Patch(':id/status')
   @ApiBearerAuth()

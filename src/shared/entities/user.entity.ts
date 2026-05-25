@@ -4,6 +4,7 @@ import { Rol } from './rol.entity';
 import { Follow } from './follow.entity';
 import {
   Column,
+  CreateDateColumn,
   Entity,
   Index,
   JoinColumn,
@@ -14,14 +15,16 @@ import {
   Unique,
 } from 'typeorm';
 import { Review } from './review.entity';
+import { ReviewReport } from './review-report.entity';
+import { ReviewBlock } from './review-block.entity';
+import { Notification } from './notification.entity';
 
 @Entity('user')
 export class User {
   @PrimaryGeneratedColumn()
   id_usuario: number;
 
-  @Column({ length: 100 })
-  @Unique(['email'])
+  @Column({ length: 100, unique: true })
   email: string;
 
   @Column({ length: 255 })
@@ -39,6 +42,9 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  @CreateDateColumn({type: 'timestamptz'})
+  createdAt!: Date;
+
   @ManyToOne(() => Rol, (rol) => rol.users)
   @JoinColumn({ name: 'rolId' })
   rol: Rol;
@@ -55,5 +61,13 @@ export class User {
   @OneToMany(() => Review, (review) => review.user)
   reviews: Review[];
 
+  @OneToMany(() => ReviewReport, (report) => report.user)
+  reviewReports: ReviewReport[];
+
+  @OneToMany(() => ReviewBlock, (block) => block.user)
+  reviewBlocks: ReviewBlock[];
+
+  @OneToMany(() => Notification, (notification) => notification.owner)
+  notifications: Notification[];
 }
 

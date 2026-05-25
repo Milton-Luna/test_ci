@@ -1,17 +1,19 @@
+
 import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
   BadRequestException,
-  ForbiddenException,
+  ConflictException,
+  Injectable,
+  NotFoundException
 } from '@nestjs/common';
-import { BusinessRepository } from 'src/shared/repositories/business.repository';
-import { BusinessStatus } from 'src/shared/entities/business.entity';
-import { FollowRepository } from 'src/shared/repositories/follow.repository';
+import { Business, BusinessStatus } from 'src/shared/entities/business.entity';
 import { PaginationDto } from 'src/shared/pagination/dto/pagination.dto';
 import { createPaginationResponse } from 'src/shared/pagination/pagination.helper';
-import { TagsRepository } from 'src/shared/repositories/tags.repository';
+import { BusinessRepository } from 'src/shared/repositories/business.repository';
 import { CategoryRepository } from 'src/shared/repositories/category.repository';
+import { FollowRepository } from 'src/shared/repositories/follow.repository';
+import { TagsRepository } from 'src/shared/repositories/tags.repository';
+import { MoreThanOrEqual } from 'typeorm';
+import { User } from 'src/shared/entities/user.entity';
 
 
 @Injectable()
@@ -23,7 +25,12 @@ export class FollowsService {
     private readonly tagRepository: TagsRepository,
   ) {}
 
-  async followBusiness(businessId: number, user: any) {
+  private sanitizePublicBusiness(business: Business) {
+      const { legal_document_url, is_legally_verified, ...rest } = business;
+      return rest as Business;
+    }
+
+  async followBusiness(businessId: number, user: User) {
     const business = await this.businessRepository.findOne({
       where: { id_business: businessId, status: BusinessStatus.ACTIVE, isActive: true }
     });
@@ -55,7 +62,7 @@ export class FollowsService {
     return { message: `Ahora sigues a ${business.businessName}` };
   }
 
-  async unfollowBusiness(businessId: number, user: any) {
+  async unfollowBusiness(businessId: number, user: User) {
     const follow = await this.followRepository.findOne({
       where: {
         follower: { id_usuario: user.id_usuario },
@@ -74,7 +81,7 @@ export class FollowsService {
     return { message: 'Has dejado de seguir a este negocio.' };
   }
 
-  async getFollowing(user: any, paginationDto: PaginationDto) {
+  async getFollowing(user: User, paginationDto: PaginationDto) {
     const { page = 1, limit = 10 } = paginationDto;
     const skip = (page - 1) * limit;
 
@@ -94,10 +101,11 @@ export class FollowsService {
 
     const businesses = follows.map(f => f.followedBusiness);
 
-    return createPaginationResponse(businesses, total, page, limit);
+    const sanitizedBusinesses = businesses.map(b => this.sanitizePublicBusiness(b));
+    return createPaginationResponse(sanitizedBusinesses, total, page, limit);
   }
 
-  async getMyBusinessFollowers(user: any, paginationDto: PaginationDto) {
+  async getMyBusinessFollowers(user: User, paginationDto: PaginationDto) {
     const { page = 1, limit = 10 } = paginationDto;
     const skip = (page - 1) * limit;
 
@@ -155,4 +163,28 @@ export class FollowsService {
 
     return createPaginationResponse(followers, total, page, limit);
   }
+
+  async getMostFollowedBusinesses(paginationDto: PaginationDto) {
+    const businesses = await this.businessRepository.find({
+    where: { 
+      status: BusinessStatus.ACTIVE, 
+      isActive: true,
+      followers_count: MoreThanOrEqual(1),
+    },
+    relations: ['category', 'tags', 'certifications'],
+    order: { 
+      followers_count: 'DESC',
+      createdAt: 'DESC'
+    },
+    take: 5,
+  });
+
+  if (businesses.length === 0) {
+    throw new NotFoundException('Aún no hay negocios con seguidores para mostrar.');
+  }
+
+  return businesses.map(b => this.sanitizePublicBusiness(b));
+  
+  }
+  
 }
