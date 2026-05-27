@@ -13,12 +13,16 @@ export class BusinessRepository extends Repository<Business> {
     take: number;
     id_category?: number;
     id_tag?: number;
+    id_departamento?: number;
+    id_municipio?: number;
     search?: string;
   }): Promise<[Business[], number]> {
     const qb = this.createQueryBuilder('b')
       .leftJoinAndSelect('b.category', 'category')
       .leftJoinAndSelect('b.tags', 'tags')
       .leftJoinAndSelect('b.certifications', 'certifications')
+      .leftJoinAndSelect('b.municipio', 'municipio')
+      .leftJoinAndSelect('municipio.departamento', 'dep')
       .where('b.status = :status', { status: 'Active' })
       .andWhere('b.isActive = :isActive', { isActive: true });
 
@@ -29,6 +33,15 @@ export class BusinessRepository extends Repository<Business> {
     }
     if (opts.id_tag) {
       qb.andWhere('tags.id_tags = :id_tag', { id_tag: opts.id_tag });
+    }
+    if (opts.id_municipio) {
+      qb.andWhere('municipio.id_municipio = :id_municipio', {
+        id_municipio: opts.id_municipio,
+      });
+    } else if (opts.id_departamento) {
+      qb.andWhere('dep.id_departamento = :id_departamento', {
+        id_departamento: opts.id_departamento,
+      });
     }
     if (opts.search) {
       qb.andWhere('b.businessName ILIKE :search', {

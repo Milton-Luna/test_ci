@@ -166,4 +166,12 @@ export class CreateBusinessDto {
   @IsArray()
   @IsNumber({}, { each: true })
   tagIds?: number[];
+
+  @ApiPropertyOptional({
+    description: 'ID del municipio donde se ubica el negocio',
+    example: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  municipioId?: number;
 }
