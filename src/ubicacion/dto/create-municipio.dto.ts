@@ -1,5 +1,5 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateMunicipioDto {
   @ApiProperty({ description: 'Nombre del municipio', example: 'Medellín' })
