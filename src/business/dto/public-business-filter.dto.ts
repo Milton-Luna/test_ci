@@ -33,6 +33,18 @@ export class PublicBusinessFilterDto extends PaginationDto {
   @IsNumber()
   id_tag?: number;
 
+  @ApiPropertyOptional({ description: 'ID del departamento para filtrar' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  id_departamento?: number;
+
+  @ApiPropertyOptional({ description: 'ID del municipio para filtrar' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  id_municipio?: number;
+
   @ApiPropertyOptional({ description: 'Ordenar por: recent, rated o reviews' })
   @IsOptional()
   @IsEnum(BusinessSortOption, {

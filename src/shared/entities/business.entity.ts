@@ -19,6 +19,7 @@ import { Follow } from './follow.entity';
 import { Review } from './review.entity';
 import { ReviewBlock } from './review-block.entity';
 import { Notification } from './notification.entity';
+import { Municipio } from './municipio.entity';
 
 export enum BusinessStatus {
   ACTIVE = 'Active',
@@ -150,4 +151,11 @@ export class Business {
 
   @OneToMany(() => Notification, (notification) => notification.business)
   notifications: Notification[];
+
+  @ManyToOne(() => Municipio, (municipio) => municipio.businesses, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'id_municipio' })
+  municipio: Municipio | null;
 }

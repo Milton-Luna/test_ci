@@ -11,15 +11,16 @@ import { MailService } from 'src/mail/mail.service';
 import { User } from 'src/shared/entities/user.entity';
 import { BusinessRepository } from 'src/shared/repositories/business.repository';
 import { CategoryRepository } from 'src/shared/repositories/category.repository';
+import { MunicipioRepository } from 'src/shared/repositories/municipio.repository';
 import { RolRepository } from 'src/shared/repositories/rol.repository';
 import { TagsRepository } from 'src/shared/repositories/tags.repository';
 import { UserRepository } from 'src/shared/repositories/user.repository';
 import { FindOptionsWhere, ILike, In, MoreThanOrEqual, Not } from 'typeorm';
-import { User } from 'src/shared/entities/user.entity';
 import {
   Business,
   BusinessStatus,
 } from '../../shared/entities/business.entity';
+import { Municipio } from '../../shared/entities/municipio.entity';
 import { Tag } from '../../shared/entities/tags.entity';
 import { createPaginationResponse } from '../../shared/pagination/pagination.helper';
 import { CreateBusinessDto } from '../dto/create-business.dto';
@@ -40,6 +41,7 @@ export class BusinessService {
     private readonly userRepository: UserRepository,
     private readonly roleRepository: RolRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly municipioRepository: MunicipioRepository,
   ) {}
 
   private sanitizePublicBusiness(business: Business) {
@@ -54,6 +56,8 @@ export class BusinessService {
       limit = 50,
       id_category,
       id_tag,
+      id_departamento,
+      id_municipio,
       search,
       sortBy,
       sortDirection = 'DESC',
@@ -67,6 +71,8 @@ export class BusinessService {
           take: limit,
           id_category,
           id_tag,
+          id_departamento,
+          id_municipio,
           search,
         });
 
@@ -99,6 +105,12 @@ export class BusinessService {
       whereConditions.tags = { id_tags: id_tag };
     }
 
+    if (id_municipio) {
+      whereConditions.municipio = { id_municipio };
+    } else if (id_departamento) {
+      whereConditions.municipio = { departamento: { id_departamento } };
+    }
+
     let orderClause: any = { createdAt: sortDirection };
 
     if (sortBy === BusinessSortOption.RATED) {
@@ -116,7 +128,7 @@ export class BusinessService {
     }
     const [businesses, total] = await this.businessRepository.findAndCount({
       where: whereConditions,
-      relations: ['category', 'tags', 'certifications'],
+      relations: ['category', 'tags', 'certifications', 'municipio', 'municipio.departamento'],
       order: orderClause,
       skip: skip,
       take: limit,
@@ -141,7 +153,7 @@ export class BusinessService {
         status: BusinessStatus.ACTIVE,
         isActive: true,
       },
-      relations: ['category', 'tags', 'certifications', 'user'],
+      relations: ['category', 'tags', 'certifications', 'user', 'municipio', 'municipio.departamento'],
     });
 
     if (!business) {
@@ -200,6 +212,8 @@ export class BusinessService {
       isActive,
       id_category,
       id_tag,
+      id_departamento,
+      id_municipio,
       search,
       sortBy,
       sortDirection = 'DESC',
@@ -229,6 +243,12 @@ export class BusinessService {
       whereCondition.tags = { id_tags: id_tag };
     }
 
+    if (id_municipio) {
+      whereCondition.municipio = { id_municipio };
+    } else if (id_departamento) {
+      whereCondition.municipio = { departamento: { id_departamento } };
+    }
+
     let orderClause: any = { createdAt: sortDirection };
 
     if (sortBy === BusinessSortOption.RATED) {
@@ -247,7 +267,7 @@ export class BusinessService {
 
     const [businesses, total] = await this.businessRepository.findAndCount({
       where: whereCondition,
-      relations: ['user', 'category', 'tags', 'certifications'],
+      relations: ['user', 'category', 'tags', 'certifications', 'municipio', 'municipio.departamento'],
       order: orderClause,
       skip,
       take: limit,
@@ -285,7 +305,7 @@ export class BusinessService {
         );
       }
 
-      const { categoryId, tagIds, ...businessData } = createBusinessDto;
+      const { categoryId, tagIds, municipioId, ...businessData } = createBusinessDto;
 
       const category = await this.categoryRepository.findOneBy({
         id_category: categoryId,
@@ -297,11 +317,20 @@ export class BusinessService {
         tags = await this.tagRepository.findBy({ id_tags: In(tagIds) });
       }
 
+      let municipio: Municipio | null = null;
+      if (municipioId) {
+        municipio = await this.municipioRepository.findOneBy({
+          id_municipio: municipioId,
+        });
+        if (!municipio) throw new NotFoundException('Municipio no encontrado');
+      }
+
       const newBusiness = this.businessRepository.create({
         ...businessData,
         user: user,
         category,
         tags,
+        municipio,
         status: BusinessStatus.PENDING,
       });
 
@@ -367,7 +396,7 @@ export class BusinessService {
       );
     }
 
-    const { categoryId, tagIds, ...businessData } = updateBusinessDto as any;
+    const { categoryId, tagIds, municipioId, ...businessData } = updateBusinessDto as any;
 
     if (businessData.businessName) {
       const nameExists = await this.businessRepository.findOne({
@@ -403,6 +432,14 @@ export class BusinessService {
       if (tags.length !== tagIds.length) {
         throw new NotFoundException('Uno o más tags no encontrados');
       }
+    }
+
+    if (municipioId !== undefined) {
+      const municipio = await this.municipioRepository.findOneBy({
+        id_municipio: municipioId,
+      });
+      if (!municipio) throw new NotFoundException('Municipio no encontrado');
+      business.municipio = municipio;
     }
 
     Object.assign(business, businessData);
